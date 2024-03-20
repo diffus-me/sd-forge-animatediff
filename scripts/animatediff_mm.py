@@ -3,6 +3,7 @@ import os
 import torch
 from modules import hashes, shared, sd_models
 from modules_forge.unet_patcher import UnetPatcher
+from modules.paths import models_path
 
 from ldm_patched.modules.model_management import get_torch_device, unet_dtype, unet_manual_cast
 from ldm_patched.modules.ops import manual_cast
@@ -27,6 +28,7 @@ class AnimateDiffMM:
 
 
     def get_model_dir(self):
+        return os.path.join(models_path, "animatediff")
         model_dir = shared.opts.data.get("animatediff_model_path", os.path.join(self.script_dir, "model"))
         if not model_dir:
             model_dir = os.path.join(self.script_dir, "model")
