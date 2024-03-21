@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image, PngImagePlugin
 import PIL.features
 import piexif
-from modules import images, shared
+from modules import images, shared, paths
 from modules.processing import Processed, StableDiffusionProcessing
 
 from scripts.animatediff_logger import logger_animatediff as logger
@@ -23,7 +23,8 @@ class AnimateDiffOutput:
         from_xyz = any("xyz_grid" in frame.filename for frame in traceback.extract_stack())
         logger.info(f"Saving output formats: {', '.join(params.format)}")
         date = datetime.datetime.now().strftime('%Y-%m-%d')
-        output_dir = Path(f"{p.outpath_samples}/AnimateDiff/{date}")
+        # output_dir = Path(f"{p.outpath_samples}/AnimateDiff/{date}")
+        output_dir = paths.Paths(p.get_request()).private_outdir().joinpath("AnimateDiff", date)
         output_dir.mkdir(parents=True, exist_ok=True)
         step = params.video_length if params.video_length > params.batch_size else params.batch_size
         for i in range(res.index_of_first_image, len(res.images), step):
@@ -108,7 +109,8 @@ class AnimateDiffOutput:
         film_in_between_frames_count = calculate_frames_to_add(len(frame_list), params.interp_x) 
 
         # save original frames to tmp folder for deforum input
-        tmp_folder = f"{p.outpath_samples}/AnimateDiff/tmp"
+        # tmp_folder = f"{p.outpath_samples}/AnimateDiff/tmp"
+        tmp_folder = paths.Paths(p.get_request()).private_outdir().joinpath("AnimateDiff", "tmp")
         input_folder = f"{tmp_folder}/input"
         os.makedirs(input_folder, exist_ok=True)
         for tmp_seq, frame in enumerate(frame_list):
