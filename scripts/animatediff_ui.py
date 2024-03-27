@@ -15,6 +15,7 @@ from scripts.animatediff_logger import logger_animatediff as logger
 from scripts.animatediff_utils import get_controlnet_units, extract_frames_from_video
 
 supported_save_formats = ["GIF", "MP4", "WEBP", "WEBM", "PNG", "TXT"]
+supported_save_formats.remove("TXT")
 
 class ToolButton(gr.Button, gr.components.FormComponent):
     """Small button with single emoji as text, fits inside gradio forms"""
@@ -230,6 +231,10 @@ class AnimateDiffUiGroup:
         self.params = AnimateDiffProcess()
         AnimateDiffUiGroup.animatediff_ui_group.append(self)
 
+        self.params.model = "mm_sd_v15_v3.fp16.safetensors"
+        self.params.format = ["GIF"]
+        self.params.video_length = 16
+
 
     def get_model_list(self):
         model_dir = motion_module.get_model_dir()
@@ -289,7 +294,7 @@ class AnimateDiffUiGroup:
                     elem_id=f"{elemid_prefix}enable"
                 )
                 self.params.video_length = gr.Number(
-                    minimum=0,
+                    minimum=self.params.batch_size,
                     value=self.params.video_length,
                     label="Number of frames",
                     precision=0,
@@ -322,6 +327,15 @@ class AnimateDiffUiGroup:
                     precision=0,
                     elem_id=f"{elemid_prefix}batch-size",
                 )
+                def _update_video_length_minimum(batch_size: int, video_length: int):
+                    if video_length < batch_size:
+                        return gr.update(minimum=batch_size, value=batch_size)
+                    return gr.update(minimum=batch_size)
+                self.params.batch_size.change(
+                    _update_video_length_minimum,
+                    inputs=[self.params.batch_size, self.params.video_length],
+                    outputs=self.params.video_length,
+                )
                 self.params.stride = gr.Number(
                     minimum=1,
                     value=self.params.stride,
@@ -336,7 +350,7 @@ class AnimateDiffUiGroup:
                     precision=0,
                     elem_id=f"{elemid_prefix}overlap",
                 )
-            with gr.Row():
+            with gr.Row(visible=False):
                 self.params.interp = gr.Radio(
                     choices=["Off", "FILM"],
                     label="Frame Interpolation",
@@ -373,11 +387,13 @@ class AnimateDiffUiGroup:
                 self.params.video_path = gr.Textbox(
                     value=self.params.video_path,
                     label="Video path",
+                    visible=False,
                     elem_id=f"{elemid_prefix}video-path"
                 )
                 self.params.mask_path = gr.Textbox(
                     value=self.params.mask_path,
                     label="Mask path",
+                    visible=False,
                     elem_id=f"{elemid_prefix}mask-path"
                 )
             if is_img2img:
