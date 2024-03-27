@@ -269,7 +269,7 @@ class AnimateDiffUiGroup:
 
     def render(self, is_img2img: bool, infotext_fields, paste_field_names):
         elemid_prefix = "img2img-ad-" if is_img2img else "txt2img-ad-"
-        with gr.Accordion("AnimateDiff", open=False):
+        with gr.Accordion("Animation Generator (AnimateDiff)", open=False):
             gr.Markdown(value="Please click [this link](https://github.com/continue-revolution/sd-webui-animatediff/blob/forge/master/docs/how-to-use.md#parameters) to read the documentation of each parameter.")
             with gr.Row():
                 with gr.Row():
