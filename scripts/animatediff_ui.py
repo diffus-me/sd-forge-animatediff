@@ -227,6 +227,9 @@ class AnimateDiffUiGroup:
     setting_sd_model_checkpoint = None
     animatediff_ui_group = []
 
+    txt2img_batch_size = None
+    img2img_batch_size = None
+
     def __init__(self):
         self.params = AnimateDiffProcess()
         AnimateDiffUiGroup.animatediff_ui_group.append(self)
@@ -327,15 +330,7 @@ class AnimateDiffUiGroup:
                     precision=0,
                     elem_id=f"{elemid_prefix}batch-size",
                 )
-                def _update_video_length_minimum(batch_size: int, video_length: int):
-                    if video_length < batch_size:
-                        return gr.update(minimum=batch_size, value=batch_size)
-                    return gr.update(minimum=batch_size)
-                self.params.batch_size.change(
-                    _update_video_length_minimum,
-                    inputs=[self.params.batch_size, self.params.video_length],
-                    outputs=self.params.video_length,
-                )
+                webui_batch_size = self._hack_batch_size(is_img2img)
                 self.params.stride = gr.Number(
                     minimum=1,
                     value=self.params.stride,
@@ -439,7 +434,10 @@ class AnimateDiffUiGroup:
         infotext_fields.extend((getattr(self.params, field), f"AnimateDiff {field}") for field in fields)
         paste_field_names.extend(f"AnimateDiff {field}" for field in fields)
 
-        return self.params.get_list(is_img2img)
+
+        params_list = self.params.get_list(is_img2img)
+        params_list[2] = webui_batch_size
+        return params_list
         return self.register_unit(is_img2img)
 
 
@@ -480,3 +478,60 @@ class AnimateDiffUiGroup:
                 )
             return
 
+        if elem_id == "txt2img_batch_size":
+            AnimateDiffUiGroup.txt2img_batch_size = component
+            return
+
+        if elem_id == "img2img_batch_size":
+            AnimateDiffUiGroup.img2img_batch_size = component
+            return
+
+
+    def _hack_batch_size(self, is_img2img: bool):
+        webui_batch_size = (
+            AnimateDiffUiGroup.img2img_batch_size
+            if is_img2img
+            else AnimateDiffUiGroup.txt2img_batch_size
+        )
+
+        self.params.batch_size.change(
+            None,
+            _js=(
+                "(batch_size, video_length) => video_length < batch_size"
+                "? {minimum: batch_size, value: batch_size, __type__: 'update'}"
+                ": {minimum: batch_size, __type__: 'update'}"
+            ),
+            inputs=[self.params.batch_size, self.params.video_length],
+            outputs=self.params.video_length,
+        )
+
+        self.params.enable.change(
+            None,
+            _js=(
+                "(enable, video_length) => enable"
+                "? {value: video_length, mode: 'static', maximum: video_length, __type__: 'update'}"
+                ": {value: 4, mode: 'dynamic', maximum: 4, __type__: 'update'}"
+            ),
+            inputs=[self.params.enable, self.params.video_length],
+            outputs=webui_batch_size,
+        )
+        tab_name = "img2img" if is_img2img else "txt2img"
+        self.params.enable.change(
+            None,
+            _js=f"monitorThisParam('tab_{tab_name}', 'modules.{tab_name}.{tab_name}', 'enable_animatediff')",
+            inputs=[],
+            outputs=[self.params.enable],
+        )
+
+        self.params.video_length.change(
+            None,
+            _js=(
+                "(enable, video_length) => enable"
+                "? {value: video_length, mode: 'static', maximum: video_length, __type__: 'update'}"
+                ": {__type__: 'update'}"
+            ),
+            inputs=[self.params.enable, self.params.video_length],
+            outputs=webui_batch_size,
+        )
+
+        return webui_batch_size

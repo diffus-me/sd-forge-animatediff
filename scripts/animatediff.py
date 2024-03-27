@@ -6,6 +6,7 @@ from modules import script_callbacks, scripts
 from modules.processing import (Processed, StableDiffusionProcessing,
                                 StableDiffusionProcessingImg2Img)
 from modules.scripts import PostprocessBatchListArgs
+from modules.system_monitor import monitor_call_context
 
 from scripts.animatediff_infv2v import AnimateDiffInfV2V
 from scripts.animatediff_latent import AnimateDiffI2VLatent
@@ -95,9 +96,23 @@ class AnimateDiffScript(scripts.Script):
     def postprocess(self, p: StableDiffusionProcessing, res: Processed, *args):
         params = self.get_process(p)
         if params.enable:
-            params.prompt_scheduler.save_infotext_txt(res)
-            AnimateDiffOutput().output(p, res, params)
-            logger.info("AnimateDiff process end.")
+            image = res.images[res.index_of_first_image]
+            with monitor_call_context(
+                p.get_request(),
+                "extensions.animatediff",
+                "extensions.animatediff",
+                decoded_params={
+                    "width": image.width,
+                    "height": image.height,
+                    "batch_size": p.batch_size,
+                    "n_iter": p.n_iter,
+                },
+                refund_if_failed=True,
+                only_available_for=["plus", "pro", "api"],
+            ):
+                params.prompt_scheduler.save_infotext_txt(res)
+                AnimateDiffOutput().output(p, res, params)
+                logger.info("AnimateDiff process end.")
 
 
     def get_process(self, p: StableDiffusionProcessing) -> AnimateDiffProcess:

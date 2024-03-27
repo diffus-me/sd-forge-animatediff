@@ -6,6 +6,7 @@ from pathlib import Path
 from modules import shared
 from modules.paths import data_path
 from modules.processing import StableDiffusionProcessing
+from modules.system_monitor import monitor_call_context
 
 from scripts.animatediff_logger import logger_animatediff as logger
 
@@ -45,6 +46,26 @@ def get_animatediff_arg(p: StableDiffusionProcessing):
 
     return None
 
+
+def _monitor_controlnet(p: StableDiffusionProcessing, enabled_units_length: int):
+    with monitor_call_context(
+        p.get_request(),
+        "extensions.animatediff.controlnet",
+        "extensions.animatediff.controlnet",
+        decoded_params={
+            "width": p.width,
+            "height": p.height,
+            "steps": p.steps,
+            "batch_size": p.batch_size,
+            "n_iter": p.n_iter,
+            "controlnet_units": enabled_units_length,
+        },
+        refund_if_failed=True,
+        only_available_for=["plus", "pro", "api"],
+    ):
+        pass
+
+
 def get_controlnet_units(p: StableDiffusionProcessing):
     """
     Get controlnet arguments from `p`.
@@ -54,7 +75,10 @@ def get_controlnet_units(p: StableDiffusionProcessing):
 
     for script in p.scripts.alwayson_scripts:
         if script.title().lower() == "controlnet":
-            cn_units = p.script_args[script.args_from:script.args_to]
+            cn_units = script.get_enabled_units(p)
+            if cn_units:
+                _monitor_controlnet(p, len(cn_units))
+            return cn_units
 
             if p.is_api and len(cn_units) > 0 and isinstance(cn_units[0], dict):
                from lib_controlnet.external_code import ControlNetUnit
