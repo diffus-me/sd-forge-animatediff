@@ -244,6 +244,7 @@ class AnimateDiffUiGroup:
         if not os.path.isdir(model_dir):
             os.mkdir(model_dir)
         def get_sd_rm_tag():
+            return []
             if shared.sd_model.is_sdxl:
                 return ["sd1"]
             elif shared.sd_model.is_sd2:
@@ -252,7 +253,7 @@ class AnimateDiffUiGroup:
                 return ["xl"]
             else:
                 return []
-        return [f for f in os.listdir(model_dir) if f != ".gitkeep" and not any(tag in f for tag in get_sd_rm_tag())]
+        return sorted([f for f in os.listdir(model_dir) if f != ".gitkeep" and not any(tag in f for tag in get_sd_rm_tag())])
 
 
     def refresh_models(self, *inputs):
