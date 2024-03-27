@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image, PngImagePlugin
 import PIL.features
 import piexif
-from modules import images, shared, paths
+from modules import images, shared, paths, script_callbacks
 from modules.processing import Processed, StableDiffusionProcessing
 
 from scripts.animatediff_logger import logger_animatediff as logger
@@ -27,6 +27,9 @@ class AnimateDiffOutput:
         output_dir = paths.Paths(p.get_request()).private_outdir().joinpath("AnimateDiff", date)
         output_dir.mkdir(parents=True, exist_ok=True)
         step = params.video_length if params.video_length > params.batch_size else params.batch_size
+
+        ts = shared.state.job_timestamp
+        image_save_params = script_callbacks.ImageSaveParams(None, p, '', '')
         for i in range(res.index_of_first_image, len(res.images), step):
             # frame interpolation replaces video_list with interpolated frames
             # so make a copy instead of a slice (reference), to avoid modifying res
@@ -34,15 +37,16 @@ class AnimateDiffOutput:
             if from_xyz:
                 first_frames.append(res.images[i].copy())
             
-            seq = images.get_next_sequence_number(output_dir, "")
+            seq = images.get_next_sequence_number(output_dir, ts)
+
             filename_suffix = f"-{params.request_id}" if params.request_id else ""
-            filename = f"{seq:05}-{res.all_seeds[(i-res.index_of_first_image)]}{filename_suffix}"
+            filename = f"{ts}-{seq:05}-{res.all_seeds[(i-res.index_of_first_image)]}{filename_suffix}"
 
             video_path_prefix = output_dir / filename
 
             frame_list = self._add_reverse(params, frame_list)
             frame_list = self._interp(p, params, frame_list, filename)
-            video_paths += self._save(params, frame_list, video_path_prefix, res, i)
+            video_paths += self._save(params, frame_list, video_path_prefix, res, i, image_save_params)
 
         if len(video_paths) == 0:
             return
@@ -152,6 +156,7 @@ class AnimateDiffOutput:
         video_path_prefix: Path,
         res: Processed,
         index: int,
+        image_save_params: script_callbacks.ImageSaveParams,
     ):
         video_paths = []
         video_array = [np.array(v) for v in frame_list]
@@ -302,6 +307,10 @@ class AnimateDiffOutput:
         
         if s3_enable:
             for video_path in video_paths: self._save_to_s3_stroge(video_path)  
+
+        for filename in video_paths:
+            image_save_params.filename = filename
+            script_callbacks.image_saved_callback(image_save_params)
         return video_paths
 
 
