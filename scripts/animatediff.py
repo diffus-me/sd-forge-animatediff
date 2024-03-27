@@ -45,12 +45,15 @@ class AnimateDiffScript(scripts.Script):
             self.infotext_fields,
             self.paste_field_names
         )
-        return (unit,)
+        return unit
 
 
-    def before_process(self, p: StableDiffusionProcessing, params: AnimateDiffProcess):
+    def before_process(self, p: StableDiffusionProcessing, *args):
         if p.is_api:
             params = get_animatediff_arg(p)
+        else:
+            params = self.get_process(p)
+
         motion_module.set_ad_params(params)
 
         # apply XYZ settings
@@ -65,31 +68,44 @@ class AnimateDiffScript(scripts.Script):
             update_infotext(p, params)
 
 
-    def before_process_batch(self, p: StableDiffusionProcessing, params: AnimateDiffProcess, **kwargs):
+    def before_process_batch(self, p: StableDiffusionProcessing, *args, **kwargs):
+        params = self.get_process(p)
         if params.enable and isinstance(p, StableDiffusionProcessingImg2Img) and not params.is_i2i_batch:
             AnimateDiffI2VLatent().randomize(p, params)
 
 
-    def process_batch(self, p, params: AnimateDiffProcess, **kwargs):
+    def process_batch(self, p, *args, **kwargs):
+        params = self.get_process(p)
         if params.enable:
             motion_module.set_ddim_alpha(p.sd_model)
 
 
-    def process_before_every_sampling(self, p, params: AnimateDiffProcess, **kwargs):
+    def process_before_every_sampling(self, p, *args, **kwargs):
+        params = self.get_process(p)
         if params.enable:
             motion_module.inject(p.sd_model, params.model)
 
 
-    def postprocess_batch_list(self, p: StableDiffusionProcessing, pp: PostprocessBatchListArgs, params: AnimateDiffProcess, **kwargs):
+    def postprocess_batch_list(self, p: StableDiffusionProcessing, pp: PostprocessBatchListArgs, *args, **kwargs):
+        params = self.get_process(p)
         if params.enable:
             params.prompt_scheduler.save_infotext_img(p)
 
 
-    def postprocess(self, p: StableDiffusionProcessing, res: Processed, params: AnimateDiffProcess):
+    def postprocess(self, p: StableDiffusionProcessing, res: Processed, *args):
+        params = self.get_process(p)
         if params.enable:
             params.prompt_scheduler.save_infotext_txt(res)
             AnimateDiffOutput().output(p, res, params)
             logger.info("AnimateDiff process end.")
+
+
+    def get_process(self, p: StableDiffusionProcessing) -> AnimateDiffProcess:
+        if not hasattr(p, "_animatediff_process"):
+            args = p.script_args[self.args_from : self.args_to]
+            p._animatediff_process = AnimateDiffProcess(*args)
+
+        return p._animatediff_process
 
 
 patch_xyz()
