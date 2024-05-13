@@ -108,7 +108,8 @@ class AnimateDiffScript(scripts.Script):
                     "n_iter": p.n_iter,
                 },
                 refund_if_failed=True,
-                only_available_for=["plus", "pro", "api"],
+                feature_type="generate",
+                feature_name="AnimateDiff",
             ):
                 params.prompt_scheduler.save_infotext_txt(res)
                 AnimateDiffOutput().output(p, res, params)

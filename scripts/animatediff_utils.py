@@ -61,7 +61,8 @@ def _monitor_controlnet(p: StableDiffusionProcessing, enabled_units_length: int)
             "controlnet_units": enabled_units_length,
         },
         refund_if_failed=True,
-        only_available_for=["plus", "pro", "api"],
+        feature_type="generate",
+        feature_name="AnimateDiff",
     ):
         pass
 
