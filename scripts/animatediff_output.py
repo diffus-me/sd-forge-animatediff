@@ -310,6 +310,7 @@ class AnimateDiffOutput:
 
         for filename in video_paths:
             image_save_params.filename = filename
+            image_save_params.pnginfo = {"parameters": infotext}
             script_callbacks.image_saved_callback(image_save_params)
         return video_paths
 

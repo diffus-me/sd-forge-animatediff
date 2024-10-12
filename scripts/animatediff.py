@@ -94,6 +94,7 @@ class AnimateDiffScript(scripts.Script):
 
 
     def postprocess(self, p: StableDiffusionProcessing, res: Processed, *args):
+        p.feature = "ANIMATEDIFF"
         params = self.get_process(p)
         if params.enable:
             image = res.images[res.index_of_first_image]
